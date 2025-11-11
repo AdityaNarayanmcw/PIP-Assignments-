@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """pip-Interference.ipynb
 
-
+google colab link: https://colab.research.google.com/drive/1Nm5CVqpyP8v3T3U3vpkg-O8IkpaIvsW3#scrollTo=O9qWx6LvQ4m6
 Task 1: Inference with a Pretrained Model (Extractive Question Answering) Task Description: Write a Python script that loads a pretrained Extractive Question Answering model and its tokenizer from the Hugging Face transformers library. Your script must use this model to find answers to a list of questions within a provided block of text.
 
 
