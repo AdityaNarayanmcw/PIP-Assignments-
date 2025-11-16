@@ -26,6 +26,10 @@ Script Highlights:
 
 Task 2: Fine-Tuning a Transformer Model (Multiclass Emotion Classification) Task Description: Fine-tune the distilbert-base-uncased model for multiclass text classification. Your task is to train a model to predict one of six emotions (sadness, joy, love, anger, fear, surprise) based on the text. This task requires adapting the standard binary classification workflow to a multiclass problem.
 
+source:
+https://huggingface.co/docs/hub/datasets-usage
+https://colab.research.google.com/github/huggingface/notebooks/blob/main/examples/text_classification.ipynb#scrollTo=UmvbnJ9JIrJd
+"""
 
 Data Source:
 Dataset: emotion (also known as dair-ai/emotion)
@@ -97,10 +101,6 @@ Phase 2 (Final submission):
 · The script should then take this user input, run the RAG chain, and print the final answer to the console.
 
 · Please submit your script in this final "Phase 2" state.
-source:
-https://huggingface.co/docs/hub/datasets-usage
-https://colab.research.google.com/github/huggingface/notebooks/blob/main/examples/text_classification.ipynb#scrollTo=UmvbnJ9JIrJd
-"""
 
 
 
