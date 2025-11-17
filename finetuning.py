@@ -98,7 +98,7 @@ training_args=TrainingArguments(
     learning_rate=2e-5,
     per_device_train_batch_size=8,
     per_device_eval_batch_size=8,
-    num_train_epochs=4,
+    num_train_epochs=5,
     weight_decay=0.01,
     warmup_steps=500,
     logging_dir="./logs",
@@ -134,12 +134,12 @@ trainer.train()
 test_results = trainer.evaluate(tokenized_ds['test'])
 test_results
 
-# trainer.save_model("./emotion_classifier_final")
-# tokenizer.save_pretrained("./emotion_classifier_final")
+trainer.save_model("./emotion_classifier_final")
+tokenizer.save_pretrained("./emotion_classifier_final")
 
 """#mapping labels to emotions according to dair-ai/emotion labels"""
 
-# emotion_labels = {0: "sadness",1: "joy",2: "love",3: "anger",4: "fear",5: "surprise"}
+emotion_labels = {0: "sadness",1: "joy",2: "love",3: "anger",4: "fear",5: "surprise"}
 
 """# some test cases"""
 
@@ -155,3 +155,38 @@ test_results
 
 #     print(f"Text: {text}")
 #     print(f"Predicted Emotion: {emotion_labels[prediction]}")
+
+predictions = trainer.predict(tokenized_ds["test"])
+print(predictions)
+print("Predictions generated successfully.")
+
+"""### https://numpy.org/doc/stable/reference/generated/numpy.argmax.html
+### https://stackoverflow.com/questions/39770376/scikit-learn-get-accuracy-scores-for-each-class
+### https://scikit-learn.org/stable/modules/generated/sklearn.metrics.classification_report.html
+"""
+
+import numpy as np
+
+true_labels = predictions.label_ids
+predicted_labels = np.argmax(predictions.predictions, axis=-1)
+
+from sklearn.metrics import accuracy_score
+
+overall_accuracy = accuracy_score(true_labels, predicted_labels)
+print(f"Overall Model Accuracy: {overall_accuracy:.4f}")
+
+for label_id, emotion_name in emotion_labels.items():
+    # Filter for samples belonging to the current emotion label
+    indices = np.where(true_labels == label_id)
+    true_labels_for_emotion = true_labels[indices]
+    predicted_labels_for_emotion = predicted_labels[indices]
+
+    # Calculate accuracy for the current emotion
+    correct_predictions = np.sum(true_labels_for_emotion == predicted_labels_for_emotion)
+    total_samples = len(true_labels_for_emotion)
+
+    if total_samples > 0:
+        accuracy = correct_predictions / total_samples
+        print(f"Emotion: {emotion_name} (Label: {label_id})")
+        print(f"  Total Samples: {total_samples}")
+        print(f"  Accuracy: {accuracy:.4f}\n")
