@@ -7,8 +7,8 @@ Original file is located at
     https://colab.research.google.com/drive/1vh7JzCtyJKQ1rS4KfArCvYPoC1Oz0T3D
 """
 
-!pip install --upgrade --force-reinstall langchain langchain-community langchain-openai langchain-core langchain-text-splitters faiss-cpu beautifulsoup4
-!pip check
+# !pip install --upgrade --force-reinstall langchain langchain-community langchain-openai langchain-core langchain-text-splitters faiss-cpu beautifulsoup4
+# !pip check
 
 # !pip install --upgrade langchain
 # !langchain-core
@@ -140,15 +140,15 @@ https://docs.langchain.com/oss/python/langchain/rag#faiss
 
 """### · Retrieve & Generate: Create a RetrievalQA chain (or equivalent) that connects a retriever (from your vector store) and an LLM (model of your choice) to answer questions."""
 
-!python -c "import langchain, langchain_core; print('langchain', getattr(langchain,'__version__',None)); print('langchain_core', getattr(langchain_core,'__version__',None))"
+#!python -c "import langchain, langchain_core; print('langchain', getattr(langchain,'__version__',None)); print('langchain_core', getattr(langchain_core,'__version__',None))"
 
 from langchain_openai import ChatOpenAI
 retriever = vectorstore.as_retriever(search_kwargs={"k": 5})
 
-!pip show langchain
+#!pip show langchain
 
 # !pip install langchain
-!# run this in a notebook cell, then restart the kernel/runtime
+#!# run this in a notebook cell, then restart the kernel/runtime
 # !pip install -U langchain-classic langchain-openai
 
 """###https://stackoverflow.com/questions/79807773/using-create-retrieval-chain-due-to-retrievalqa-deprecation"""

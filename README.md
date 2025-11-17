@@ -58,7 +58,9 @@ Source: Load directly from the Hugging Face datasets library using load_dataset(
 
 Task 3: Retrieval-Augmented Generation (RAG) Script
 
-google colab link: https://colab.research.google.com/drive/1vh7JzCtyJKQ1rS4KfArCvYPoC1Oz0T3D#scrollTo=WxJ9eelhQhVj
+Open ai google colab link: https://colab.research.google.com/drive/1vh7JzCtyJKQ1rS4KfArCvYPoC1Oz0T3D#scrollTo=WxJ9eelhQhVj
+
+huggingface google colab link : https://colab.research.google.com/drive/1vaeBtuPokMFFdOWo3AgBE8_Llwv_0YX6#scrollTo=V5mRSGWur1w5
 
 Task Description: Write a single Python script that implements a complete, in-memory RAG pipeline. The script must answer questions based only on the content of a specific online document. This task has two phases.
 
