@@ -7,8 +7,8 @@ Original file is located at
     https://colab.research.google.com/drive/1vh7JzCtyJKQ1rS4KfArCvYPoC1Oz0T3D
 """
 
-# !pip install --upgrade --force-reinstall langchain langchain-community langchain-openai langchain-core langchain-text-splitters faiss-cpu beautifulsoup4
-# !pip check
+!pip install --upgrade --force-reinstall langchain langchain-community langchain-openai langchain-core langchain-text-splitters faiss-cpu beautifulsoup4 chromadb ragas
+!pip check
 
 # !pip install --upgrade langchain
 # !langchain-core
@@ -21,11 +21,6 @@ source: https://pypi.org/project/langchain-text-splitters/
 """
 
 # !pip install --upgrade langchain-text-splitters
-
-# !pip install -qU \
-#   langchain==0.3.25 \
-#   langchain-huggingface==0.3.0 \
-#   langchain-openai==0.3.22
 
 # !pip install --upgrade langchain
 
@@ -67,37 +62,34 @@ https://synthmetric.com/document-chunking-size-overlap-and-what-actually-works/
 https://stackoverflow.com/questions/76681318/why-is-recursivecharactertextsplitter-not-giving-any-chunk-overlap
 """
 
-from langchain_text_splitters import RecursiveCharacterTextSplitter
+# from langchain_text_splitters import RecursiveCharacterTextSplitter
 
-# with open("state_of_the_union.txt") as f:
-#     state_of_the_union = f.read()
+# # with open("state_of_the_union.txt") as f:
+# #     state_of_the_union = f.read()
 
-text_splitter = RecursiveCharacterTextSplitter(
-    chunk_size=1000,  # chunk size (characters)
-    chunk_overlap=200,  # chunk overlap (characters)
-    add_start_index=True,  # track index in original document
-)
-all_splits = text_splitter.split_documents(docs)
-print("first test:",all_splits[3])
-print("second test: ",all_splits[4])
+# text_splitter = RecursiveCharacterTextSplitter(
+#     chunk_size=4000,
+#     chunk_overlap=600,
+#     add_start_index=True,
+# )
+# all_splits = text_splitter.split_documents(docs)
+# print("first test:",all_splits[3])
+# print("second test: ",all_splits[4])
 
-print(f"End of chunk 3 (last 150 chars):\n{all_splits[3].page_content[-500:]}")
-print(f"\nBeginning of chunk 4 (first 150 chars):\n{all_splits[4].page_content[:500]}")
+# print(f"End of chunk 3 (last 150 chars):\n{all_splits[3].page_content[-500:]}")
+# print(f"\nBeginning of chunk 4 (first 150 chars):\n{all_splits[4].page_content[:500]}")
 
 """###· Embed & Store: Use an embedding model and an in-memory vector store (e.g., FAISS or Chroma) to create a searchable index of the chunks.
 source : https://docs.langchain.com/oss/python/integrations/text_embedding
+
+### ###  source: https://openrouter.ai/docs/community/lang-chain
 """
-
-# !pip install -qU  langchain langchain-huggingface sentence_transformers
-
-# !pip install -qU langchain-openai
-# #from langchain_huggingface.embeddings import HuggingFaceEmbeddings
 
 from langchain_openai import OpenAIEmbeddings
 import getpass
 import os
 
-os.environ["OPENAI_API_KEY"] = "openai-key"
+os.environ["OPENAI_API_KEY"] = "open-ai-key"
 embeddings = OpenAIEmbeddings(
     model="text-embedding-3-large",
     # With the `text-embedding-3` class
@@ -107,27 +99,34 @@ embeddings = OpenAIEmbeddings(
 )
 #embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-mpnet-base-v2")
 
-"""###https://docs.langchain.com/oss/python/integrations/vectorstores/faiss"""
+"""### embeddings sentence-transformers/all-mpnet-base-v2
 
-from langchain_community.vectorstores import FAISS
+###https://docs.langchain.com/oss/python/integrations/vectorstores/faiss
+"""
 
-vectorstore = FAISS.from_texts(
-    [doc.page_content for doc in all_splits],
-    embedding=embeddings,
-)
+# from langchain_community.vectorstores import FAISS
+# from langchain_community.vectorstores import Chroma
 
-# Use the vectorstore as a retriever
-retriever = vectorstore.as_retriever()
+# vectorstore = FAISS.from_documents(
+#     all_splits,
+#     embedding=embeddings,
+# )
+# # vectorstore = Chroma.from_documents(all_splits, embeddings)
+# # Use the vectorstore as a retriever
+# retriever = vectorstore.as_retriever(
+#     search_type="mmr",
+#     search_kwargs={"k": 4, "fetch_k":10}
+# )
 
-# Retrieve the most similar text
-# retrieved_documents = retriever.invoke("What is LangChain?")
+# # Retrieve the most similar text
+# # retrieved_documents = retriever.invoke("What is LangChain?")
 
-# Retrieve documents with similarity scores
-retrieved_with_scores = vectorstore.similarity_search_with_score("What is Agent System ", k=4)
+# # Retrieve documents with similarity scores
+# retrieved_with_scores = vectorstore.similarity_search_with_score(" HuggingGPT 4 stages", k=4)
 
-# Print the retrieved documents and their scores
-for doc, score in retrieved_with_scores:
-    print(f"Content: {doc.page_content[:200]}...\nScore: {score}\n---")
+# # Print the retrieved documents and their scores
+# for doc, score in retrieved_with_scores:
+#     print(f"Content: {doc.page_content}...\nScore: {score}\n---")
 
 """### source : https://docs.langchain.com/oss/python/integrations/vectorstores/faiss
 https://docs.langchain.com/oss/python/langchain/rag#faiss
@@ -140,51 +139,315 @@ https://docs.langchain.com/oss/python/langchain/rag#faiss
 
 """### · Retrieve & Generate: Create a RetrievalQA chain (or equivalent) that connects a retriever (from your vector store) and an LLM (model of your choice) to answer questions."""
 
-#!python -c "import langchain, langchain_core; print('langchain', getattr(langchain,'__version__',None)); print('langchain_core', getattr(langchain_core,'__version__',None))"
+!python -c "import langchain, langchain_core; print('langchain', getattr(langchain,'__version__',None)); print('langchain_core', getattr(langchain_core,'__version__',None))"
 
-from langchain_openai import ChatOpenAI
-retriever = vectorstore.as_retriever(search_kwargs={"k": 5})
+"""### hugface token: os.environ["HUGGINGFACEHUB_API_TOKEN"] = "your-huggingface-token-here"
 
-#!pip show langchain
+###https://discuss.huggingface.co/t/model-huggingfaceh4-zephyr-7b-alpha-is-not-supported-for-task-text-generation/164390
 
-# !pip install langchain
-#!# run this in a notebook cell, then restart the kernel/runtime
-# !pip install -U langchain-classic langchain-openai
+###https://stackoverflow.com/questions/79807773/using-create-retrieval-chain-due-to-retrievalqa-deprecation
 
-"""###https://stackoverflow.com/questions/79807773/using-create-retrieval-chain-due-to-retrievalqa-deprecation"""
-
-# Source - https://stackoverflow.com/a
-# Posted by cottontail
-# Retrieved 2025-11-16, License - CC BY-SA 4.0
-
-from langchain_classic.chains import RetrievalQA
-from langchain_openai import ChatOpenAI
-query = "What is an agent system and what are its key components?"
-llm = ChatOpenAI(model="gpt-3.5-turbo", temperature=0)
-retrievalQA = RetrievalQA.from_llm(llm=llm,
-                                   retriever=retriever,
-                                   return_source_documents=True,  # Return retrieved documents
-    verbose=True)
-response = retrievalQA.invoke(query)
-
-print(response['result'])
+### openrouter
+"""
 
 for i, doc in enumerate(response['source_documents'], 1):
     print(f"\n--- Document {i} ---")
-    print(f"Content: {doc.page_content[:300]}...")
+    print(f"Content: {doc.page_content}")
     print(f"Length: {len(doc.page_content)} characters")
     if hasattr(doc, 'metadata'):
         print(f"Metadata: {doc.metadata}")
 
-while True:
-    user_query = input("Your question: ").strip()
+# while True:
+#     user_query = input("question: ").strip()
 
-    if not user_query:
-        continue
+#     if not user_query:
+#         continue
 
-    if user_query.lower() in ['quit', 'exit', 'q']:
-        print("Goodbye!")
+#     if user_query.lower() in ['quit', 'exit', 'q']:
+#         print("Goodbye!")
+#         break
+
+#     response = retrievalQA.invoke(user_query)
+#     print(f"\nAnswer: {response['result']}\n")
+
+"""###rag evaluation"""
+
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+from langchain_community.vectorstores import Chroma
+from langchain_openai import OpenAIEmbeddings, ChatOpenAI
+from langchain_classic.chains import RetrievalQA
+from langchain_core.prompts import PromptTemplate
+
+
+text_splitter = RecursiveCharacterTextSplitter(
+    chunk_size=6000,
+    chunk_overlap=1000,
+    add_start_index=True,
+)
+all_splits = text_splitter.split_documents(docs)
+
+
+embeddings = OpenAIEmbeddings(model="text-embedding-3-large")
+
+vectorstore = Chroma.from_documents(all_splits, embeddings)
+
+retriever = vectorstore.as_retriever(
+    search_type="mmr",
+    search_kwargs={"k": 6, "fetch_k": 15}
+)
+
+prompt_template = """You are a helpful assistant that provides detailed, comprehensive answers based on the given context.
+
+Use the following context to answer the question. Your answer should:
+1. Include ALL specific frameworks, systems, and approaches mentioned in the context
+2. Explain each framework or system in detail
+3. Provide examples where available
+4. Be thorough and comprehensive
+Context: {context}
+Question: {question}
+Comprehensive Answer:"""
+
+PROMPT = PromptTemplate(
+    template=prompt_template,
+    input_variables=["context", "question"]
+)
+
+llm = ChatOpenAI(
+    model="gpt-4",
+    temperature=0
+)
+
+retrievalQA = RetrievalQA.from_chain_type(
+    llm=llm,
+    chain_type="stuff",
+    retriever=retriever,
+    return_source_documents=True,
+    verbose=True,
+    chain_type_kwargs={"prompt": PROMPT}
+)
+
+#query = "Explain Component Three: Tool Use in detail?"
+#query="common choices of ANN algorithms for fast MIPS?"
+query="sample conversation for task clarification sent to OpenAI ChatCompletion endpoint used by GPT-Engineer?"
+response = retrievalQA.invoke(query)
+
+
+print("ANSWER:")
+print(response['result'])
+
+print("SOURCE DOCUMENTS:")
+
+
+for i, doc in enumerate(response['source_documents'], 1):
+    print(f"\n--- Document {i} ---")
+    print(f"Content preview: {doc.page_content[:400]}...")
+    print(f"Length: {len(doc.page_content)} characters")
+    print(f"Metadata: {doc.metadata}")
+
+print(f"\nAnswer: {response['result']}\n")
+
+retrieved_docs = vectorstore.similarity_search("Component Three Tool Use", k=6)
+
+print("FULL CONTENT OF TOOL USE DOCUMENT:")
+
+for i, doc in enumerate(retrieved_docs):
+    if "Component Three: Tool Use" in doc.page_content:
+        print(f"\nDocument {i+1} - Full Content:")
+        print(doc.page_content)
+        print(f"\nLength: {len(doc.page_content)}")
         break
 
-    response = retrievalQA.invoke(user_query)
-    print(f"\nAnswer: {response['result']}\n")
+"""### RAGAS evaluation
+source https://docs.ragas.io/en/latest/getstarted/rag_eval/#collect-evaluation-data
+"""
+
+#!pip install ragas
+
+from ragas import EvaluationDataset, evaluate
+from ragas.llms import LangchainLLMWrapper
+from ragas.metrics import LLMContextRecall, Faithfulness, FactualCorrectness
+
+sample_queries = [
+    #"What are the three main components of an LLM-powered autonomous agent system?",
+    # "Explain the ReAct framework and how it combines reasoning and acting.",
+    "What are common choices of ANN algorithms for fast MIPS in vector search?",
+    # "Describe the HuggingGPT framework and its four stages of operation.",
+    # "What is Chain of Thought prompting and how does it help with complex tasks?"
+]
+
+
+expected_responses = ["""In a LLM-powered autonomous agent system, LLM functions as the agent’s brain, complemented by several key components:
+
+Planning
+Subgoal and decomposition: The agent breaks down large tasks into smaller, manageable subgoals, enabling efficient handling of complex tasks.
+Reflection and refinement: The agent can do self-criticism and self-reflection over past actions, learn from mistakes and refine them for future steps, thereby improving the quality of final results.
+Memory
+Short-term memory: I would consider all the in-context learning (See Prompt Engineering) as utilizing short-term memory of the model to learn.
+Long-term memory: This provides the agent with the capability to retain and recall (infinite) information over extended periods, often by leveraging an external vector store and fast retrieval.
+Tool use
+The agent learns to call external APIs for extra information that is missing from the model weights (often hard to change after pre-training), including current information, code execution capability, access to proprietary information sources and more.""",
+                      """ReAct (Yao et al. 2023) integrates reasoning and acting within LLM by extending the action space to be a combination of task-specific discrete actions and the language space. The former enables LLM to interact with the environment (e.g. use Wikipedia search API), while the latter prompting LLM to generate reasoning traces in natural language.
+
+The ReAct prompt template incorporates explicit steps for LLM to think, roughly formatted as:
+
+Thought: ...
+Action: ...
+Observation: ...
+... (Repeated many times) In both experiments on knowledge-intensive tasks and decision-making tasks, ReAct works better than the Act-only baseline where Thought: … step is removed.""",
+                      """A couple common choices of ANN algorithms for fast MIPS:
+
+LSH (Locality-Sensitive Hashing): It introduces a hashing function such that similar input items are mapped to the same buckets with high probability, where the number of buckets is much smaller than the number of inputs.
+ANNOY (Approximate Nearest Neighbors Oh Yeah): The core data structure are random projection trees, a set of binary trees where each non-leaf node represents a hyperplane splitting the input space into half and each leaf stores one data point. Trees are built independently and at random, so to some extent, it mimics a hashing function. ANNOY search happens in all the trees to iteratively search through the half that is closest to the query and then aggregates the results. The idea is quite related to KD tree but a lot more scalable.
+HNSW (Hierarchical Navigable Small World): It is inspired by the idea of small world networks where most nodes can be reached by any other nodes within a small number of steps; e.g. “six degrees of separation” feature of social networks. HNSW builds hierarchical layers of these small-world graphs, where the bottom layers contain the actual data points. The layers in the middle create shortcuts to speed up search. When performing a search, HNSW starts from a random node in the top layer and navigates towards the target. When it can’t get any closer, it moves down to the next layer, until it reaches the bottom layer. Each move in the upper layers can potentially cover a large distance in the data space, and each move in the lower layers refines the search quality.
+FAISS (Facebook AI Similarity Search): It operates on the assumption that in high dimensional space, distances between nodes follow a Gaussian distribution and thus there should exist clustering of data points. FAISS applies vector quantization by partitioning the vector space into clusters and then refining the quantization within clusters. Search first looks for cluster candidates with coarse quantization and then further looks into each cluster with finer quantization.
+ScaNN (Scalable Nearest Neighbors): The main innovation in ScaNN is anisotropic vector quantization. It quantizes a data point
+ to
+ such that the inner product
+ is as similar to the original distance of
+ as possible, instead of picking the closet quantization centroid points.
+""",
+                      """HuggingGPT (Shen et al. 2023) is a framework to use ChatGPT as the task planner to select models available in HuggingFace platform according to the model descriptions and summarize the response based on the execution results.The system comprises of 4 stages:
+
+(1) Task planning: LLM works as the brain and parses the user requests into multiple tasks. There are four attributes associated with each task: task type, ID, dependencies, and arguments. They use few-shot examples to guide LLM to do task parsing and planning.(2) Model selection: LLM distributes the tasks to expert models, where the request is framed as a multiple-choice question. LLM is presented with a list of models to choose from. Due to the limited context length, task type based filtration is needed.(3) Task execution: Expert models execute on the specific tasks and log results.(4) Response generation: LLM receives the execution results and provides summarized results to users.""",
+                      """Chain of thought (CoT; Wei et al. 2022) has become a standard prompting technique for enhancing model performance on complex tasks. The model is instructed to “think step by step” to utilize more test-time computation to decompose hard tasks into smaller and simpler steps. CoT transforms big tasks into multiple manageable tasks and shed lights into an interpretation of the model’s thinking process.""",
+                      ]
+
+# expected_responses = [
+# #     """The three main components of an LLM-powered autonomous agent system are Planning, Memory, and Tool Use.
+
+# # Planning involves subgoal and decomposition where the agent breaks down large tasks into smaller, manageable subgoals for efficient handling of complex tasks. It also includes reflection and refinement, allowing the agent to do self-criticism and self-reflection over past actions, learn from mistakes, and refine them for future steps, thereby improving the quality of final results.
+
+# # Memory consists of short-term memory, which utilizes in-context learning as the model's way to learn, and long-term memory, which provides the agent with the capability to retain and recall infinite information over extended periods, often by leveraging an external vector store and fast retrieval.
+
+# # Tool use enables the agent to call external APIs for extra information that is missing from the model weights (often hard to change after pre-training), including current information, code execution capability, and access to proprietary information sources.""",
+
+# #     """ReAct (Reasoning and Acting) integrates reasoning and acting within LLM by extending the action space to be a combination of task-specific discrete actions and the language space. The former enables LLM to interact with the environment (such as using Wikipedia search API), while the latter prompts LLM to generate reasoning traces in natural language.
+
+# # The ReAct prompt template incorporates explicit steps for LLM to think, roughly formatted as: Thought, Action, Observation, repeated many times. In experiments on both knowledge-intensive tasks and decision-making tasks, ReAct works better than the Act-only baseline where the Thought step is removed, demonstrating the importance of combining reasoning with action.""",
+
+#     """Common ANN (Approximate Nearest Neighbors) algorithms for fast MIPS (Maximum Inner Product Search) include:
+
+# LSH (Locality-Sensitive Hashing): Introduces a hashing function such that similar input items are mapped to the same buckets with high probability, where the number of buckets is much smaller than the number of inputs.
+
+# ANNOY (Approximate Nearest Neighbors Oh Yeah): Uses random projection trees as the core data structure, a set of binary trees where each non-leaf node represents a hyperplane splitting the input space into half and each leaf stores one data point.
+
+# HNSW (Hierarchical Navigable Small World): Inspired by small world networks where most nodes can be reached by any other nodes within a small number of steps. It builds hierarchical layers of small-world graphs, where bottom layers contain actual data points and middle layers create shortcuts to speed up search.
+
+# FAISS (Facebook AI Similarity Search): Operates on the assumption that in high dimensional space, distances between nodes follow a Gaussian distribution. It applies vector quantization by partitioning the vector space into clusters and then refining the quantization within clusters.
+
+# ScaNN (Scalable Nearest Neighbors): The main innovation is anisotropic vector quantization, which quantizes a data point to maximize similarity of inner products rather than picking the closest quantization centroid points.""",
+
+# #     """HuggingGPT is a framework to use ChatGPT as the task planner to select models available in HuggingFace platform according to model descriptions and summarize the response based on execution results.
+
+# # The system comprises 4 stages:
+
+# # (1) Task planning: LLM works as the brain and parses user requests into multiple tasks. There are four attributes associated with each task: task type, ID, dependencies, and arguments. Few-shot examples guide LLM to do task parsing and planning.
+
+# # (2) Model selection: LLM distributes the tasks to expert models, where the request is framed as a multiple-choice question. LLM is presented with a list of models to choose from. Due to limited context length, task type based filtration is needed.
+
+# # (3) Task execution: Expert models execute on the specific tasks and log results.
+
+# # (4) Response generation: LLM receives the execution results and provides summarized results to users.
+
+# # To put HuggingGPT into real world usage, several challenges need to be solved: efficiency improvement is needed as both LLM inference rounds and interactions with other models slow down the process; it relies on a long context window to communicate over complicated task content; and stability improvement of LLM outputs and external model services is required.""",
+
+# #     """Chain of Thought (CoT) prompting has become a standard prompting technique for enhancing model performance on complex tasks. The model is instructed to "think step by step" to utilize more test-time computation to decompose hard tasks into smaller and simpler steps.
+
+# # CoT transforms big tasks into multiple manageable tasks and sheds light into an interpretation of the model's thinking process. By breaking down complex reasoning into intermediate steps, it allows the model to tackle problems that would be difficult to solve in a single forward pass.
+
+# # This technique is particularly effective because it encourages the model to show its work, making the reasoning process more transparent and allowing for better handling of multi-step problems that require sequential reasoning."""
+# ]
+
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+from langchain_community.vectorstores import Chroma
+from langchain_openai import OpenAIEmbeddings, ChatOpenAI
+from langchain_classic.chains import RetrievalQA
+from langchain_core.prompts import PromptTemplate
+
+
+text_splitter = RecursiveCharacterTextSplitter(
+    chunk_size=1000,
+    chunk_overlap=250,
+    add_start_index=True,
+)
+all_splits = text_splitter.split_documents(docs)
+
+
+embeddings = OpenAIEmbeddings(model="text-embedding-3-large")
+
+vectorstore = Chroma.from_documents(all_splits, embeddings)
+
+retriever = vectorstore.as_retriever(
+    search_type="mmr",
+    search_kwargs={"k": 6, "fetch_k": 15}
+)
+
+prompt_template = """You are a helpful assistant that provides detailed, comprehensive answers based on the given context.
+
+Use the following context to answer the question. Your answer should:
+1. Include ALL specific frameworks, systems, and approaches mentioned in the context
+2. Explain each framework or system in detail
+3. Provide examples where available
+4. Be thorough and comprehensive
+Context: {context}
+Question: {question}
+Comprehensive Answer:"""
+
+PROMPT = PromptTemplate(
+    template=prompt_template,
+    input_variables=["context", "question"]
+)
+
+llm = ChatOpenAI(
+    model="gpt-4",
+    temperature=0
+)
+
+retrievalQA = RetrievalQA.from_chain_type(
+    llm=llm,
+    chain_type="stuff",
+    retriever=retriever,
+    return_source_documents=True,
+    verbose=True,
+    chain_type_kwargs={"prompt": PROMPT}
+)
+
+dataset = []
+for query, reference in zip(sample_queries, expected_responses):
+    print(f"Processing query: {query[:60]}")
+
+
+    response = retrievalQA.invoke(query)
+
+    #Fetched data from vector database
+    retrieved_contexts = [doc.page_content for doc in response['source_documents']]
+
+
+    dataset.append({
+        "user_input": query,
+        "retrieved_contexts": retrieved_contexts,
+        "response": response['result'],
+        "reference": reference
+    })
+evaluation_dataset = EvaluationDataset.from_list(dataset)
+
+print(response)
+
+evaluator_llm = LangchainLLMWrapper(llm)
+
+metrics = [
+    LLMContextRecall(),
+    Faithfulness(),
+    FactualCorrectness()
+]
+
+result = evaluate(
+    dataset=evaluation_dataset,
+    metrics=metrics,
+    llm=evaluator_llm
+)
+
+print(result)
+
+print(f"\nAnswer: {response['result']}\n")
+
