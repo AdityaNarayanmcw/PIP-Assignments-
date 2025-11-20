@@ -24,6 +24,12 @@ source: https://pypi.org/project/langchain-text-splitters/
 
 # !pip install --upgrade langchain
 
+import os
+OPENROUTER_API_KEY = "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"
+os.environ["OPENAI_API_KEY"] = OPENROUTER_API_KEY
+
+OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
+
 """https://docs.langchain.com/oss/python/integrations/document_loaders/web_base"""
 
 import bs4
@@ -88,16 +94,24 @@ source : https://docs.langchain.com/oss/python/integrations/text_embedding
 from langchain_openai import OpenAIEmbeddings
 import getpass
 import os
-
+#os.environ["OPENAI_API_KEY"] = ""
 os.environ["OPENAI_API_KEY"] = "open-ai-key"
-embeddings = OpenAIEmbeddings(
-    model="text-embedding-3-large",
-    # With the `text-embedding-3` class
-    # of models, you can specify the size
-    # of the embeddings you want returned.
-    # dimensions=1024
-)
+#os.environ["OPENAI_API_KEY"] = "smy4F_6Iz52C0t7KiItEO3CCY92KFGjrngZE8FR_9xO7x7eT3BlbkFJGZREVRgdnlP8L8V8u22RxMmQ8OZ1Jy2-DPhXHxTI-hDihz7nxW_oaH5TdeW92ClrJU3e-UNloA"
+# embeddings = OpenAIEmbeddings(
+#     model="text-embedding-3-large",
+#     # dimensions=1024
+# )
 #embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-mpnet-base-v2")
+
+# from langchain_openai import OpenAIEmbeddings
+# import getpass
+# import os
+
+# embeddings = OpenAIEmbeddings(
+#     model="text-embedding-3-large",
+#     openai_api_base=OPENROUTER_BASE_URL,
+#     openai_api_key=OPENROUTER_API_KEY
+# )
 
 """### embeddings sentence-transformers/all-mpnet-base-v2
 
@@ -213,8 +227,13 @@ PROMPT = PromptTemplate(
 )
 
 llm = ChatOpenAI(
-    model="gpt-4",
-    temperature=0
+    # model="gpt-4",
+    # temperature=0
+    model="meta-llama/llama-3.1-8b-instruct:free",
+    temperature=0,
+    openai_api_base=OPENROUTER_BASE_URL,
+    openai_api_key=OPENROUTER_API_KEY,
+    max_tokens=1500
 )
 
 retrievalQA = RetrievalQA.from_chain_type(
@@ -268,11 +287,11 @@ from ragas.llms import LangchainLLMWrapper
 from ragas.metrics import LLMContextRecall, Faithfulness, FactualCorrectness
 
 sample_queries = [
-    #"What are the three main components of an LLM-powered autonomous agent system?",
-    # "Explain the ReAct framework and how it combines reasoning and acting.",
+    "What are the three main components of an LLM-powered autonomous agent system?",
+    "Explain the ReAct framework and how it combines reasoning and acting.",
     "What are common choices of ANN algorithms for fast MIPS in vector search?",
-    # "Describe the HuggingGPT framework and its four stages of operation.",
-    # "What is Chain of Thought prompting and how does it help with complex tasks?"
+    "Describe the HuggingGPT framework and its four stages of operation.",
+    "What is Chain of Thought prompting and how does it help with complex tasks?"
 ]
 
 
@@ -300,17 +319,13 @@ LSH (Locality-Sensitive Hashing): It introduces a hashing function such that sim
 ANNOY (Approximate Nearest Neighbors Oh Yeah): The core data structure are random projection trees, a set of binary trees where each non-leaf node represents a hyperplane splitting the input space into half and each leaf stores one data point. Trees are built independently and at random, so to some extent, it mimics a hashing function. ANNOY search happens in all the trees to iteratively search through the half that is closest to the query and then aggregates the results. The idea is quite related to KD tree but a lot more scalable.
 HNSW (Hierarchical Navigable Small World): It is inspired by the idea of small world networks where most nodes can be reached by any other nodes within a small number of steps; e.g. “six degrees of separation” feature of social networks. HNSW builds hierarchical layers of these small-world graphs, where the bottom layers contain the actual data points. The layers in the middle create shortcuts to speed up search. When performing a search, HNSW starts from a random node in the top layer and navigates towards the target. When it can’t get any closer, it moves down to the next layer, until it reaches the bottom layer. Each move in the upper layers can potentially cover a large distance in the data space, and each move in the lower layers refines the search quality.
 FAISS (Facebook AI Similarity Search): It operates on the assumption that in high dimensional space, distances between nodes follow a Gaussian distribution and thus there should exist clustering of data points. FAISS applies vector quantization by partitioning the vector space into clusters and then refining the quantization within clusters. Search first looks for cluster candidates with coarse quantization and then further looks into each cluster with finer quantization.
-ScaNN (Scalable Nearest Neighbors): The main innovation in ScaNN is anisotropic vector quantization. It quantizes a data point
- to
- such that the inner product
- is as similar to the original distance of
- as possible, instead of picking the closet quantization centroid points.
+ScaNN (Scalable Nearest Neighbors): The main innovation in ScaNN is anisotropic vector quantization. It quantizes a data point to such that the inner product is as similar to the original distance of as possible, instead of picking the closet quantization centroid points.
 """,
-                      """HuggingGPT (Shen et al. 2023) is a framework to use ChatGPT as the task planner to select models available in HuggingFace platform according to the model descriptions and summarize the response based on the execution results.The system comprises of 4 stages:
+                       """HuggingGPT (Shen et al. 2023) is a framework to use ChatGPT as the task planner to select models available in HuggingFace platform according to the model descriptions and summarize the response based on the execution results.The system comprises of 4 stages:
 
-(1) Task planning: LLM works as the brain and parses the user requests into multiple tasks. There are four attributes associated with each task: task type, ID, dependencies, and arguments. They use few-shot examples to guide LLM to do task parsing and planning.(2) Model selection: LLM distributes the tasks to expert models, where the request is framed as a multiple-choice question. LLM is presented with a list of models to choose from. Due to the limited context length, task type based filtration is needed.(3) Task execution: Expert models execute on the specific tasks and log results.(4) Response generation: LLM receives the execution results and provides summarized results to users.""",
-                      """Chain of thought (CoT; Wei et al. 2022) has become a standard prompting technique for enhancing model performance on complex tasks. The model is instructed to “think step by step” to utilize more test-time computation to decompose hard tasks into smaller and simpler steps. CoT transforms big tasks into multiple manageable tasks and shed lights into an interpretation of the model’s thinking process.""",
-                      ]
+ (1) Task planning: LLM works as the brain and parses the user requests into multiple tasks. There are four attributes associated with each task: task type, ID, dependencies, and arguments. They use few-shot examples to guide LLM to do task parsing and planning.(2) Model selection: LLM distributes the tasks to expert models, where the request is framed as a multiple-choice question. LLM is presented with a list of models to choose from. Due to the limited context length, task type based filtration is needed.(3) Task execution: Expert models execute on the specific tasks and log results.(4) Response generation: LLM receives the execution results and provides summarized results to users.""",
+                       """Chain of thought (CoT; Wei et al. 2022) has become a standard prompting technique for enhancing model performance on complex tasks. The model is instructed to “think step by step” to utilize more test-time computation to decompose hard tasks into smaller and simpler steps. CoT transforms big tasks into multiple manageable tasks and shed lights into an interpretation of the model’s thinking process.""",
+                       ]
 
 # expected_responses = [
 # #     """The three main components of an LLM-powered autonomous agent system are Planning, Memory, and Tool Use.
@@ -366,20 +381,25 @@ from langchain_core.prompts import PromptTemplate
 
 
 text_splitter = RecursiveCharacterTextSplitter(
-    chunk_size=1000,
-    chunk_overlap=250,
+    chunk_size=1200,
+    chunk_overlap=350,
     add_start_index=True,
+    separators=["\n\n", "\n", ". ", "! ", "? ", " ", ""]
 )
 all_splits = text_splitter.split_documents(docs)
 
 
-embeddings = OpenAIEmbeddings(model="text-embedding-3-large")
+embeddings = OpenAIEmbeddings(model="text-embedding-3-large",
+    #                           openai_api_base=OPENROUTER_BASE_URL,
+    # openai_api_key=OPENROUTER_API_KEY
+                              )
 
 vectorstore = Chroma.from_documents(all_splits, embeddings)
 
 retriever = vectorstore.as_retriever(
     search_type="mmr",
-    search_kwargs={"k": 6, "fetch_k": 15}
+    search_kwargs={"k": 6, "fetch_k": 20},
+    score_threshold= 0.7,
 )
 
 prompt_template = """You are a helpful assistant that provides detailed, comprehensive answers based on the given context.
@@ -397,10 +417,15 @@ PROMPT = PromptTemplate(
     template=prompt_template,
     input_variables=["context", "question"]
 )
-
 llm = ChatOpenAI(
     model="gpt-4",
-    temperature=0
+    temperature= 0,
+    #max_tokens=4000
+    # model="meta-llama/llama-3.1-8b-instruct:free",
+    # temperature=0,
+    # openai_api_base=OPENROUTER_BASE_URL,
+    # openai_api_key=OPENROUTER_API_KEY,
+    # max_tokens=1500
 )
 
 retrievalQA = RetrievalQA.from_chain_type(
@@ -410,18 +435,17 @@ retrievalQA = RetrievalQA.from_chain_type(
     return_source_documents=True,
     verbose=True,
     chain_type_kwargs={"prompt": PROMPT}
+
 )
 
 dataset = []
 for query, reference in zip(sample_queries, expected_responses):
-    print(f"Processing query: {query[:60]}")
-
-
     response = retrievalQA.invoke(query)
 
-    #Fetched data from vector database
-    retrieved_contexts = [doc.page_content for doc in response['source_documents']]
-
+    retrieved_contexts = []
+    for doc in response['source_documents']:
+        context = doc.page_content[:1000] if len(doc.page_content) > 1000 else doc.page_content
+        retrieved_contexts.append(context)
 
     dataset.append({
         "user_input": query,
@@ -429,22 +453,43 @@ for query, reference in zip(sample_queries, expected_responses):
         "response": response['result'],
         "reference": reference
     })
+
 evaluation_dataset = EvaluationDataset.from_list(dataset)
 
 print(response)
 
-evaluator_llm = LangchainLLMWrapper(llm)
+from ragas import EvaluationDataset, evaluate
+from ragas.llms import llm_factory
+from ragas.metrics import LLMContextRecall, Faithfulness, FactualCorrectness, ContextPrecision, AnswerRelevancy
+from openai import OpenAI
+import os
 
+openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
+evaluator_llm = llm_factory(
+    #model="gpt-4o-mini",
+    model="gpt-4",
+    client=openai_client,
+    #max_tokens=2000
+)
+#evaluator_llm = LangchainLLMWrapper(llm)
+# evaluator_llm = llm_factory(
+#     model="gpt-4o-mini",
+#     client=openai_client,
+#     #max_tokens=4000  # Increased for complex evaluations
+# )
 metrics = [
     LLMContextRecall(),
     Faithfulness(),
-    FactualCorrectness()
+    FactualCorrectness(),
+    AnswerRelevancy(),
+    ContextPrecision(),
 ]
 
 result = evaluate(
     dataset=evaluation_dataset,
     metrics=metrics,
-    llm=evaluator_llm
+    llm=llm
 )
 
 print(result)
