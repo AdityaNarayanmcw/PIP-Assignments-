@@ -25,7 +25,7 @@ source: https://pypi.org/project/langchain-text-splitters/
 # !pip install --upgrade langchain
 
 import os
-OPENROUTER_API_KEY = "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"
+OPENROUTER_API_KEY = "openrouter_api_key"
 os.environ["OPENAI_API_KEY"] = OPENROUTER_API_KEY
 
 OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
