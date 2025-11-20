@@ -101,5 +101,14 @@ Phase 2 (Final submission):
 
 · Please submit your script in this final "Phase 2" state.
 
+RAG Evaluation using RAGAS
+Evaluation Overview:
+I evaluated the pipeline across five key metrics to measure both retrieval quality and generation accuracy:
+Context Recall - Measures how well the retrieval captures all relevant information
+Faithfulness - Assesses whether generated answers are grounded in the retrieved context
+Factual Correctness - Evaluates the accuracy of facts in the generated responses
+Answer Relevancy - Determines how relevant the answers are to the user queries
+Context Precision - Measures the precision of retrieved contexts
+
 
 
