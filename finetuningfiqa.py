@@ -7,7 +7,7 @@ Original file is located at
     https://colab.research.google.com/drive/1TZ2pDjEyuOy6EhpFZTD2zuo_a5lftlUf
 """
 
-!pip install datasets==3.6.0
+#pip install datasets==3.6.0
 
 # os.environ["HUGGINGFACEHUB_API_TOKEN"] = ""
 import os
@@ -15,20 +15,61 @@ from getpass import getpass
 HF_token = getpass()
 os.environ['HUGGINGFACEHUB_API_TOKEN'] = HF_token
 
+!pip install beir
+
+from beir import util, LoggingHandler
+from beir.datasets.data_loader import GenericDataLoader
+import logging
+import pathlib
+
+# Setup logging
+logging.basicConfig(format='%(asctime)s - %(message)s',
+                    level=logging.INFO,
+                    handlers=[LoggingHandler()])
+
+
+url = f"https://public.ukp.informatik.tu-darmstadt.de/thakur/BEIR/datasets/fiqa.zip"
+data_path = util.download_and_unzip(url, "datasets")
+
+corpus, queries, qrels = GenericDataLoader(data_folder=data_path).load(split="train")
+
+print(f"Corpus size: {len(corpus)}")
+print(f"Queries size: {len(queries)}")
+print(f"Qrels size: {len(qrels)}")
+
+corpus_first_key = next(iter(corpus)) # Get the first key from corpus
+print(f"Corpus entry for key '{corpus_first_key}': {corpus[corpus_first_key]}")
+print(f"Queries entry for key '0': {queries['0']}")
+print(f"Qrels entry for key '0': {qrels['0']}")
+
 import datasets
 from datasets import load_dataset
 print(datasets.__version__)
 
 dataset = load_dataset("BeIR/fiqa", name="corpus", split="corpus")
 
-corpus
+"""https://ir-datasets.com/beir#beir/fiqa/train"""
+
+from huggingface_hub import list_datasets
+datasets_list = list_datasets()
+print("fiqa" in datasets_list)
+
+dataset
+
+dataset[0]
 
 queries_dataset = load_dataset("BeIR/fiqa", "queries", split="queries")
 
 queries_dataset
 
-print(f"   Documents: {len(dataset)}")
-print(f"   Queries: {len(queries_dataset)}")
+
+
+print(f"id: {queries_dataset[0]['_id']}")
+print(f"title: {queries_dataset[0]['title']}")
+print(f"text: {queries_dataset[0]['text']}")
+
+print(f" Documents: {len(dataset)}")
+print(f"Queries: {len(queries_dataset)}")
 
 documents = []
 for item in dataset:
@@ -40,44 +81,14 @@ for item in queries_dataset:
     query_text = item['text']
     queries.append(query_text)
 
-print(f"✅ Prepared {len(documents)} documents and {len(queries)} queries")
+print(f"{len(documents)} documents and {len(queries)} queries")
 
-print(f"   Sample query: {queries[0][:100]}...")
-print(f"   Sample document: {documents[0][:100]}...")
+qrels = load_dataset("BeIR/fiqa", name="qrels")
 
-"""Creating training pairs..."""
+print(f"query: {queries[1][:200]}...")
+print(f"document: {documents[1][:200]}...")
 
-import random
-training_pairs = []
-labels = []
 
-# Create 5,000 positive pairs (query with a relevant document)
-print("   Creating positive pairs...")
-for i in range(5000):
-    query_idx = random.randint(0, len(queries) - 1)
-    doc_idx = random.randint(0, len(documents) - 1)
-
-    training_pairs.append({
-        'query': queries[query_idx],
-        'document': documents[doc_idx]
-    })
-    labels.append(1)
-
-# Create 5,000 negative pairs (query with a random unrelated document)
-print("   Creating negative pairs...")
-for i in range(5000):
-    query_idx = random.randint(0, len(queries) - 1)
-    doc_idx = random.randint(0, len(documents) - 1)
-
-    training_pairs.append({
-        'query': queries[query_idx],
-        'document': documents[doc_idx]
-    })
-    labels.append(0)
-
-print(f"✅ Created {len(training_pairs)} training pairs")
-print(f"   Positive pairs: {labels.count(1)}")
-print(f"   Negative pairs: {labels.count(0)}")
 
 """Split Data into Training and Validation Sets"""
 
@@ -86,11 +97,14 @@ train_pairs, val_pairs, train_labels, val_labels = train_test_split(
     training_pairs, labels, test_size=0.2, random_state=42
 )
 
-print(f"✅ Data split complete!")
-print(f"   Training samples: {len(train_pairs)}")
-print(f"   Validation samples: {len(val_pairs)}")
+print(f" data split complete!")
+print(f"training samples: {len(train_pairs)}")
+print(f"validation samples: {len(val_pairs)}")
 
-"""Load Tokenizer and Model"""
+"""Load Tokenizer and Model
+
+https://stackoverflow.com/questions/75172073/how-to-use-automodelforsequenceclassification-for-multiclass-classification
+"""
 
 from transformers import AutoTokenizer, AutoModelForSequenceClassification, TrainingArguments, Trainer
 
@@ -98,8 +112,10 @@ model_name = "distilbert-base-uncased"
 tokenizer = AutoTokenizer.from_pretrained(model_name)
 model = AutoModelForSequenceClassification.from_pretrained(model_name, num_labels=2)
 
-print(" Model and tokenizer loaded successfully!")
-print(f"   Model: {model_name}")
+print(" model and tokenizer loaded successfully!")
+print(f"   model: {model_name}")
+
+"""###https://huggingface.co/transformers/v4.7.0/preprocessing.html"""
 
 import torch
 
@@ -111,6 +127,8 @@ train_encodings = tokenizer(
     max_length=512
 )
 
+train_encodings.keys()
+
 val_encodings = tokenizer(
     [pair['query'] for pair in val_pairs],
     [pair['document'] for pair in val_pairs],
@@ -118,6 +136,11 @@ val_encodings = tokenizer(
     padding=True,
     max_length=512
 )
+
+"""###https://torchtext.readthedocs.io/en/latest/data.html
+###https://www.geeksforgeeks.org/deep-learning/how-do-you-use-pytorchs-dataset-and-dataloader-classes-for-custom-data/
+###https://towardsdatascience.com/how-to-use-datasets-and-dataloader-in-pytorch-for-custom-text-data-270eed7f7c00/
+"""
 
 import torch
 
@@ -137,8 +160,8 @@ class RelevanceDataset(torch.utils.data.Dataset):
 train_dataset = RelevanceDataset(train_encodings, train_labels)
 val_dataset = RelevanceDataset(val_encodings, val_labels)
 
-print(f"   Training dataset size: {len(train_dataset)}")
-print(f"   Validation dataset size: {len(val_dataset)}")
+print(f"Training dataset size: {len(train_dataset)}")
+print(f"Validation dataset size: {len(val_dataset)}")
 
 !pip install --upgrade transformers
 
@@ -171,21 +194,3 @@ trainer.train()
 model.save_pretrained('./financial_reranker_model')
 tokenizer.save_pretrained('./financial_reranker_model')
 
-# Load the saved model
-test_model = AutoModelForSequenceClassification.from_pretrained('./financial_reranker_model')
-test_tokenizer = AutoTokenizer.from_pretrained('./financial_reranker_model')
-
-test_query = "What are the best investment strategies for retirement?"
-test_doc_relevant = "Retirement investment strategies include diversifying your portfolio with stocks, bonds, and mutual funds."
-test_doc_irrelevant = "The weather today is sunny with a high of 75 degrees."
-
-# Predict relevance for irrelevant document
-inputs_irrelevant = test_tokenizer(test_query, test_doc_irrelevant, return_tensors="pt", truncation=True, padding=True)
-outputs_irrelevant = test_model(**inputs_irrelevant)
-prediction_irrelevant = torch.softmax(outputs_irrelevant.logits, dim=1)
-
-print(f"\nQuery: {test_query}")
-print(f"\n📄 Relevant Document: {test_doc_relevant}")
-print(f"   Relevance Score: {prediction_relevant[0][1].item():.4f}")
-print(f"\n📄 Irrelevant Document: {test_doc_irrelevant}")
-print(f"   Relevance Score: {prediction_irrelevant[0][1].item():.4f}")
