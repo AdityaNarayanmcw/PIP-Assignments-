@@ -7,7 +7,7 @@ Original file is located at
     https://colab.research.google.com/drive/1TZ2pDjEyuOy6EhpFZTD2zuo_a5lftlUf
 """
 
-#pip install datasets==3.6.0
+!pip install datasets==3.6.0
 
 # os.environ["HUGGINGFACEHUB_API_TOKEN"] = ""
 import os
@@ -17,30 +17,38 @@ os.environ['HUGGINGFACEHUB_API_TOKEN'] = HF_token
 
 !pip install beir
 
-from beir import util, LoggingHandler
-from beir.datasets.data_loader import GenericDataLoader
-import logging
-import pathlib
+# from beir import util, LoggingHandler
+# from beir.datasets.data_loader import GenericDataLoader
+# import logging
+# import pathlib
 
-# Setup logging
-logging.basicConfig(format='%(asctime)s - %(message)s',
-                    level=logging.INFO,
-                    handlers=[LoggingHandler()])
+# # Setup logging
+# logging.basicConfig(format='%(asctime)s - %(message)s',
+#                     level=logging.INFO,
+#                     handlers=[LoggingHandler()])
 
 
-url = f"https://public.ukp.informatik.tu-darmstadt.de/thakur/BEIR/datasets/fiqa.zip"
-data_path = util.download_and_unzip(url, "datasets")
+# url = f"https://public.ukp.informatik.tu-darmstadt.de/thakur/BEIR/datasets/fiqa.zip"
+# data_path = util.download_and_unzip(url, "datasets")
 
-corpus, queries, qrels = GenericDataLoader(data_folder=data_path).load(split="train")
+# corpus, queries, qrels = GenericDataLoader(data_folder=data_path).load(split="train")
 
-print(f"Corpus size: {len(corpus)}")
-print(f"Queries size: {len(queries)}")
-print(f"Qrels size: {len(qrels)}")
+# print(f"Corpus size: {len(corpus)}")
+# print(f"Queries size: {len(queries)}")
+# print(f"Qrels size: {len(qrels)}")
 
-corpus_first_key = next(iter(corpus)) # Get the first key from corpus
-print(f"Corpus entry for key '{corpus_first_key}': {corpus[corpus_first_key]}")
-print(f"Queries entry for key '0': {queries['0']}")
-print(f"Qrels entry for key '0': {qrels['0']}")
+# corpus_first_key = next(iter(corpus))
+# print(f"Corpus entry for key '{corpus_first_key}': {corpus[corpus_first_key]}")
+# print(f"Queries entry for key '0': {queries['0']}")
+# print(f"Qrels entry for key '0': {qrels['0']}")
+
+# query_id = '0'
+# doc_id = '18850'
+
+# print(f"Query content (ID: {query_id}): {queries[query_id]}")
+# print(f"Document content (ID: {doc_id}): {corpus[doc_id]}")
+
+"""###corpus"""
 
 import datasets
 from datasets import load_dataset
@@ -50,23 +58,46 @@ dataset = load_dataset("BeIR/fiqa", name="corpus", split="corpus")
 
 """https://ir-datasets.com/beir#beir/fiqa/train"""
 
-from huggingface_hub import list_datasets
-datasets_list = list_datasets()
-print("fiqa" in datasets_list)
+# from huggingface_hub import list_datasets
+# datasets_list = list_datasets()
+# print("fiqa" in datasets_list)
 
 dataset
 
+dataset = dataset.remove_columns(['title'])
+
+dataset
+
+
+
 dataset[0]
+
+"""###queries"""
 
 queries_dataset = load_dataset("BeIR/fiqa", "queries", split="queries")
 
 queries_dataset
 
+queries_dataset = queries_dataset.remove_columns(['title'])
 
+queries_dataset
 
-print(f"id: {queries_dataset[0]['_id']}")
+queries_dataset[0]
+
+"""####mapping queries with corpus"""
+
+ds = load_dataset("BeIR/fiqa-qrels")
+
+print(len(ds[0]))
+
+print(f"{ds['train'][0]}")
+print(len(ds['train']))
+
+print(f"_id: {queries_dataset[0]['_id']}")
 print(f"title: {queries_dataset[0]['title']}")
 print(f"text: {queries_dataset[0]['text']}")
+
+print(f"")
 
 print(f" Documents: {len(dataset)}")
 print(f"Queries: {len(queries_dataset)}")
@@ -193,4 +224,39 @@ trainer.train()
 
 model.save_pretrained('./financial_reranker_model')
 tokenizer.save_pretrained('./financial_reranker_model')
+
+# Load the saved model
+test_model = AutoModelForSequenceClassification.from_pretrained('./financial_reranker_model')
+test_tokenizer = AutoTokenizer.from_pretrained('./financial_reranker_model')
+
+qrels_train_split = ds['train']
+print(f"Loaded qrels_train_split with {len(qrels_train_split)} entries.")
+
+qrels_train_split = ds['train']
+print(f"Loaded qrels_train_split with {len(qrels_train_split)} entries.")
+
+training_pairs = []
+labels = []
+
+# Create a dictionary of queries and documents
+queries_dict = {str(item['_id']): item['text'] for item in queries_dataset}
+documents_dict = {str(item['_id']): item['text'] for item in dataset}
+
+for entry in qrels_train_split:
+    query_id = str(entry['query-id'])
+    doc_id = str(entry['corpus-id'])
+    score = entry['score']
+
+    if query_id in queries_dict and doc_id in documents_dict:
+        query_text = queries_dict[query_id]
+        document_text = documents_dict[doc_id]
+
+        training_pairs.append({'query': query_text, 'document': document_text})
+        labels.append(score)
+
+print(f"Generated {len(training_pairs)} training pairs.")
+print(f"Generated {len(labels)} labels.")
+
+print(f"{training_pairs[2]}")
+print(f"{labels[0]}")
 
