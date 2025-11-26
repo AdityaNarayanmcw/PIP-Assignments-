@@ -88,31 +88,13 @@ queries_dataset[0]
 
 ds = load_dataset("BeIR/fiqa-qrels")
 
-print(len(ds[0]))
-
 print(f"{ds['train'][0]}")
 print(len(ds['train']))
-
-print(f"_id: {queries_dataset[0]['_id']}")
-print(f"title: {queries_dataset[0]['title']}")
-print(f"text: {queries_dataset[0]['text']}")
 
 print(f"")
 
 print(f" Documents: {len(dataset)}")
 print(f"Queries: {len(queries_dataset)}")
-
-documents = []
-for item in dataset:
-    doc_text = item['text']
-    documents.append(doc_text)
-
-queries = []
-for item in queries_dataset:
-    query_text = item['text']
-    queries.append(query_text)
-
-print(f"{len(documents)} documents and {len(queries)} queries")
 
 qrels = load_dataset("BeIR/fiqa", name="qrels")
 
@@ -121,18 +103,9 @@ print(f"document: {documents[1][:200]}...")
 
 
 
-"""Split Data into Training and Validation Sets"""
+"""Split Data into Training and Validation Sets
 
-from sklearn.model_selection import train_test_split
-train_pairs, val_pairs, train_labels, val_labels = train_test_split(
-    training_pairs, labels, test_size=0.2, random_state=42
-)
-
-print(f" data split complete!")
-print(f"training samples: {len(train_pairs)}")
-print(f"validation samples: {len(val_pairs)}")
-
-"""Load Tokenizer and Model
+Load Tokenizer and Model
 
 https://stackoverflow.com/questions/75172073/how-to-use-automodelforsequenceclassification-for-multiclass-classification
 """
@@ -146,88 +119,17 @@ model = AutoModelForSequenceClassification.from_pretrained(model_name, num_label
 print(" model and tokenizer loaded successfully!")
 print(f"   model: {model_name}")
 
-"""###https://huggingface.co/transformers/v4.7.0/preprocessing.html"""
+"""###https://huggingface.co/transformers/v4.7.0/preprocessing.html
 
-import torch
-
-train_encodings = tokenizer(
-    [pair['query'] for pair in train_pairs],
-    [pair['document'] for pair in train_pairs],
-    truncation=True,
-    padding=True,
-    max_length=512
-)
-
-train_encodings.keys()
-
-val_encodings = tokenizer(
-    [pair['query'] for pair in val_pairs],
-    [pair['document'] for pair in val_pairs],
-    truncation=True,
-    padding=True,
-    max_length=512
-)
-
-"""###https://torchtext.readthedocs.io/en/latest/data.html
+###https://torchtext.readthedocs.io/en/latest/data.html
 ###https://www.geeksforgeeks.org/deep-learning/how-do-you-use-pytorchs-dataset-and-dataloader-classes-for-custom-data/
 ###https://towardsdatascience.com/how-to-use-datasets-and-dataloader-in-pytorch-for-custom-text-data-270eed7f7c00/
 """
-
-import torch
-
-class RelevanceDataset(torch.utils.data.Dataset):
-    def __init__(self, encodings, labels):
-        self.encodings = encodings
-        self.labels = labels
-
-    def __len__(self):
-        return len(self.labels)
-
-    def __getitem__(self, idx):
-        item = {key: torch.tensor(val[idx]) for key, val in self.encodings.items()}
-        item['labels'] = torch.tensor(self.labels[idx])
-        return item
-
-train_dataset = RelevanceDataset(train_encodings, train_labels)
-val_dataset = RelevanceDataset(val_encodings, val_labels)
 
 print(f"Training dataset size: {len(train_dataset)}")
 print(f"Validation dataset size: {len(val_dataset)}")
 
 !pip install --upgrade transformers
-
-from transformers import TrainingArguments
-
-training_args = TrainingArguments(
-    output_dir='./financial_reranker',
-    num_train_epochs=3,
-    per_device_train_batch_size=16,
-    per_device_eval_batch_size=16,
-    warmup_steps=500,
-    weight_decay=0.01,
-    logging_dir='./logs',
-    logging_steps=100,
-    eval_strategy="epoch",
-    save_strategy="epoch",
-    load_best_model_at_end=True,
-    report_to=[]
-)
-
-trainer = Trainer(
-    model=model,
-    args=training_args,
-    train_dataset=train_dataset,
-    eval_dataset=val_dataset,
-)
-
-trainer.train()
-
-model.save_pretrained('./financial_reranker_model')
-tokenizer.save_pretrained('./financial_reranker_model')
-
-# Load the saved model
-test_model = AutoModelForSequenceClassification.from_pretrained('./financial_reranker_model')
-test_tokenizer = AutoTokenizer.from_pretrained('./financial_reranker_model')
 
 qrels_train_split = ds['train']
 print(f"Loaded qrels_train_split with {len(qrels_train_split)} entries.")
@@ -259,4 +161,208 @@ print(f"Generated {len(labels)} labels.")
 
 print(f"{training_pairs[2]}")
 print(f"{labels[0]}")
+
+
+
+relevant_docs_per_query = {}
+
+for entry in qrels_train_split:
+    query_id = str(entry['query-id'])
+    corpus_id = str(entry['corpus-id'])
+    if query_id not in relevant_docs_per_query:
+        relevant_docs_per_query[query_id] = set()
+    relevant_docs_per_query[query_id].add(corpus_id)
+
+print(f"Populated relevant_docs_per_query with {len(relevant_docs_per_query)} unique queries.")
+
+"""## Extract All Corpus Document IDs
+
+### Subtask:
+Create a list containing all available `_id`s from the `dataset` (corpus). This list will be used for random sampling of documents.
+
+**Reasoning**:
+To extract all document IDs from the dataset, I will iterate through the dataset and append each item's '_id' to a new list.
+"""
+
+all_corpus_doc_ids = []
+for item in dataset:
+    all_corpus_doc_ids.append(item['_id'])
+
+print(f"Total unique corpus document IDs: {len(all_corpus_doc_ids)}")
+
+"""**Reasoning**:
+Now that we have extracted all corpus document IDs, the next step is to generate an equal number of negative training samples as positive samples. This involves iterating through the positive qrels, randomly selecting a non-relevant document for each query, and adding these as negative pairs.
+
+
+"""
+
+import random
+
+num_positive_samples = len(training_pairs)
+negative_samples_count = 0
+
+# Generate negative samples equal to the number of positive samples
+while negative_samples_count < num_positive_samples:
+
+    random_positive_entry = random.choice(qrels_train_split)
+    query_id = str(random_positive_entry['query-id'])
+
+    negative_doc_id = random.choice(all_corpus_doc_ids)
+
+
+    if query_id in relevant_docs_per_query and negative_doc_id not in relevant_docs_per_query[query_id]:
+        # Ensure the query and document actually exist in our dicts before adding
+        if query_id in queries_dict and negative_doc_id in documents_dict:
+            query_text = queries_dict[query_id]
+            document_text = documents_dict[negative_doc_id]
+
+            training_pairs.append({'query': query_text, 'document': document_text})
+            labels.append(0) # Label 0 for negative sample
+            negative_samples_count += 1
+
+print(f"Generated {len(training_pairs)} total training pairs (positive + negative).")
+print(f"Generated {len(labels)} total labels.")
+
+training_pairs = []
+labels = []
+
+# Limit to the first 5000 relevant pairs as positive samples
+num_positive_samples_to_generate = 5000
+
+for i, entry in enumerate(qrels_train_split):
+    if i >= num_positive_samples_to_generate:
+        break
+
+    query_id = str(entry['query-id'])
+    doc_id = str(entry['corpus-id'])
+
+    # Ensure the query and document IDs exist in the dictionaries
+    if query_id in queries_dict and doc_id in documents_dict:
+        query_text = queries_dict[query_id]
+        document_text = documents_dict[doc_id]
+
+        training_pairs.append({'query': query_text, 'document': document_text})
+        labels.append(1) # Label 1 for positive sample
+
+print(f"Generated {len(training_pairs)} positive training pairs.")
+
+import random
+
+# 5000 negative samples
+num_negative_samples_to_generate = 5000
+negative_samples_count = 0
+
+while negative_samples_count < num_negative_samples_to_generate:
+
+    random_positive_entry = random.choice(qrels_train_split)
+    query_id = str(random_positive_entry['query-id'])
+
+
+    negative_doc_id = random.choice(all_corpus_doc_ids)
+
+
+    if query_id in relevant_docs_per_query and negative_doc_id not in relevant_docs_per_query[query_id]:
+        if query_id in queries_dict and negative_doc_id in documents_dict:
+            query_text = queries_dict[query_id]
+            document_text = documents_dict[negative_doc_id]
+
+            training_pairs.append({'query': query_text, 'document': document_text})
+            labels.append(0)
+            negative_samples_count += 1
+
+print(f"Generated {len(training_pairs) - num_negative_samples_to_generate} positive training pairs and {negative_samples_count} negative training pairs.")
+print(f"Total training pairs: {len(training_pairs)}")
+print(f"Total labels: {len(labels)}")
+
+from sklearn.model_selection import train_test_split
+train_pairs, val_pairs, train_labels, val_labels = train_test_split(
+    training_pairs, labels, test_size=0.2, random_state=42
+)
+
+print(f"   Training samples: {len(train_pairs)}")
+print(f"   Validation samples: {len(val_pairs)}")
+
+import torch
+
+train_encodings = tokenizer(
+    [pair['query'] for pair in train_pairs],
+    [pair['document'] for pair in train_pairs],
+    truncation=True,
+    padding=True,
+    max_length=512
+)
+
+import torch
+from transformers import AutoTokenizer
+
+model_name = "distilbert-base-uncased"
+tokenizer = AutoTokenizer.from_pretrained(model_name)
+
+train_encodings = tokenizer(
+    [pair['query'] for pair in train_pairs],
+    [pair['document'] for pair in train_pairs],
+    truncation=True,
+    padding=True,
+    max_length=512
+)
+
+val_encodings = tokenizer(
+    [pair['query'] for pair in val_pairs],
+    [pair['document'] for pair in val_pairs],
+    truncation=True,
+    padding=True,
+    max_length=512
+)
+
+import torch
+
+class RelevanceDataset(torch.utils.data.Dataset):
+    def __init__(self, encodings, labels):
+        self.encodings = encodings
+        self.labels = labels
+
+    def __len__(self):
+        return len(self.labels)
+
+    def __getitem__(self, idx):
+        item = {key: torch.tensor(val[idx]) for key, val in self.encodings.items()}
+        item['labels'] = torch.tensor(self.labels[idx])
+        return item
+
+train_dataset = RelevanceDataset(train_encodings, train_labels)
+val_dataset = RelevanceDataset(val_encodings, val_labels)
+
+from transformers import TrainingArguments
+
+training_args = TrainingArguments(
+    output_dir='./financial_reranker',
+    num_train_epochs=3,
+    per_device_train_batch_size=16,
+    per_device_eval_batch_size=16,
+    warmup_steps=500,
+    weight_decay=0.01,
+    logging_dir='./logs',
+    logging_steps=100,
+    eval_strategy="epoch",
+    save_strategy="epoch",
+    load_best_model_at_end=True,
+    report_to=[]
+)
+
+
+from transformers import AutoModelForSequenceClassification, Trainer
+
+
+model_name = "distilbert-base-uncased"
+model = AutoModelForSequenceClassification.from_pretrained(model_name, num_labels=2)
+
+trainer = Trainer(
+    model=model,
+    args=training_args,
+    train_dataset=train_dataset,
+    eval_dataset=val_dataset,
+)
+
+
+trainer.train()
 
